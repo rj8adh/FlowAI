@@ -133,7 +133,7 @@ export default function Home() {
 
       {/* Content */}
       <div className={`p-6 space-y-5 fade-up transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}>
-        <PipelineFlow activeModules={activeModuleIds} totalLatency={totalLatency} />
+        <PipelineFlow modules={modules} totalLatency={totalLatency} onToggle={toggleModule} onReorder={reorderModules} />
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
           <PolicyBuilder modules={modules} onToggle={toggleModule} onReorder={reorderModules} />

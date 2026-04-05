@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import PolicyBuilder from "../components/PolicyBuilder";
+import PipelineFlow from "../components/PipelineFlow";
 import PipelineTest from "../components/PipelineTest";
 import { Module } from "../components/ModuleCard";
 
@@ -228,82 +229,111 @@ export default function PolicyBuilderPage() {
             <path d="M7 6v4M7 4.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <div>
-            <p className="text-xs font-medium text-[var(--accent-blue)]">Pass-through default</p>
+            <p className="text-xs font-medium text-[var(--accent-blue)]">Pipeline-First Builder</p>
             <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-              When all modules are off, the pipeline acts as a transparent proxy. Toggle modules on to activate middleware. Step numbers show execution order.
+              Interact with your pipeline at the top to see the execution flow. Configure modules in the center, and monitor the complete flow below.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
-          <PolicyBuilder modules={modules} onToggle={toggleModule} onReorder={reorderModules} />
-
-          <div className="space-y-4">
-            <ConfigPreview modules={modules} failureMode={failureMode} />
-
-            {/* Failure mode selector */}
-            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold text-[var(--text-primary)]">Failure Mode</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(["open", "closed"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setFailureMode(m)}
-                    className={`p-2.5 rounded-lg border text-left transition-all ${
-                      failureMode === m
-                        ? m === "open"
-                          ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                          : "bg-red-500/10 border-red-500/30 text-red-400"
-                        : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--border)]"
-                    }`}
-                  >
-                    <div className="text-xs font-semibold capitalize">Fail {m}</div>
-                    <div className="text-[10px] mt-0.5 leading-relaxed opacity-70">
-                      {m === "open" ? "Bypass module, keep app alive." : "Block request, max security."}
-                    </div>
-                  </button>
-                ))}
-              </div>
+        {/* ═══ TOP CONTROL PANELS ═══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* Failure mode selector */}
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold text-[var(--text-primary)]">Failure Mode</span>
             </div>
-
-            {/* Latency budget */}
-            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-[var(--text-primary)]">Latency Budget</span>
-                <span className={`text-xs font-mono ${totalLatency > 100 ? "text-amber-400" : "text-[var(--accent-green)]"}`}>
-                  {totalLatency}ms / 200ms
-                </span>
-              </div>
-              <div className="h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    totalLatency > 150 ? "bg-red-400" : totalLatency > 80 ? "bg-amber-400" : "bg-[var(--accent-green)]"
+            <div className="space-y-2">
+              {(["open", "closed"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setFailureMode(m)}
+                  className={`w-full p-2.5 rounded-lg border text-left transition-all ${
+                    failureMode === m
+                      ? m === "open"
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                        : "bg-red-500/10 border-red-500/30 text-red-400"
+                      : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--border)]"
                   }`}
-                  style={{ width: `${Math.min((totalLatency / 200) * 100, 100)}%` }}
-                />
-              </div>
-              <div className="mt-3 space-y-1.5">
-                {modules.filter((m) => m.enabled).map((m, i) => (
-                  <div key={m.id} className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-[var(--bg-overlay)] text-[9px] font-bold text-[var(--text-muted)] flex items-center justify-center shrink-0">
-                      {modules.indexOf(m) + 1}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-muted)] flex-1">{m.name}</span>
-                    <span className="text-[11px] font-mono text-amber-400">+{m.latencyMs}ms</span>
+                >
+                  <div className="text-xs font-semibold capitalize">Fail {m}</div>
+                  <div className="text-[10px] mt-0.5 leading-relaxed opacity-70">
+                    {m === "open" ? "Bypass & keep alive" : "Block, max security"}
                   </div>
-                ))}
-                {modules.filter((m) => m.enabled).length === 0 && (
-                  <p className="text-[11px] text-[var(--text-muted)] italic">No active modules</p>
-                )}
-              </div>
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Latency budget */}
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-[var(--text-primary)]">Latency Budget</span>
+              <span className={`text-xs font-mono ${totalLatency > 100 ? "text-amber-400" : "text-[var(--accent-green)]"}`}>
+                {totalLatency}ms / 200ms
+              </span>
+            </div>
+            <div className="h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  totalLatency > 150 ? "bg-red-400" : totalLatency > 80 ? "bg-amber-400" : "bg-[var(--accent-green)]"
+                }`}
+                style={{ width: `${Math.min((totalLatency / 200) * 100, 100)}%` }}
+              />
+            </div>
+            <div className="mt-3 space-y-1.5">
+              {modules.filter((m) => m.enabled).slice(0, 3).map((m) => (
+                <div key={m.id} className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-amber-400">+{m.latencyMs}ms</span>
+                  <span className="text-[10px] text-[var(--text-muted)] truncate">{m.name}</span>
+                </div>
+              ))}
+              {modules.filter((m) => m.enabled).length > 3 && (
+                <div className="text-[10px] text-[var(--text-muted)] italic">
+                  +{modules.filter((m) => m.enabled).length - 3} more
+                </div>
+              )}
+              {modules.filter((m) => m.enabled).length === 0 && (
+                <p className="text-[11px] text-[var(--text-muted)] italic">No active modules</p>
+              )}
+            </div>
+          </div>
+
+          {/* Config preview */}
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4 overflow-hidden h-fit">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-[var(--text-primary)]">Config Preview</span>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">pipeline.json</span>
+            </div>
+            <pre className="text-[10px] font-mono text-[var(--text-secondary)] leading-relaxed overflow-auto max-h-[180px] bg-[var(--bg-base)] p-2 rounded border border-[var(--border-subtle)]">
+              {JSON.stringify(
+                {
+                  version: "1.0",
+                  pipeline: {
+                    pre: modules.filter((m) => m.phase === "Pre" && m.enabled).map((m) => m.id),
+                    post: modules.filter((m) => m.phase === "Post" && m.enabled).map((m) => m.id),
+                  },
+                  failureMode,
+                },
+                null,
+                2
+              )}
+            </pre>
           </div>
         </div>
 
-        {/* Live pipeline test */}
-        <div className="mt-5">
+        {/* ═══ PIPELINE FLOW VISUALIZATION (Interactive at top) ═══ */}
+        <div className="mb-6">
+          <PipelineFlow modules={modules} totalLatency={totalLatency} onToggle={toggleModule} onReorder={reorderModules} />
+        </div>
+
+        {/* ═══ DETAILED MODULE BUILDER (center section) ═══ */}
+        <div className="mb-6">
+          <PolicyBuilder modules={modules} onToggle={toggleModule} onReorder={reorderModules} />
+        </div>
+
+        {/* ═══ LIVE PIPELINE TEST (bottom section) ═══ */}
+        <div>
           <PipelineTest modules={modules} />
         </div>
       </div>

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Dark Mode (Default) */
 :root {
   --bg-base: #0c0c0e;
   --bg-surface: #131316;
@@ -19,17 +20,43 @@
   --accent-purple: #a855f7;
 }
 
+/* Light Mode */
+:root.light-mode {
+  --bg-base: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f5f6f8;
+  --bg-overlay: #eff0f3;
+  --border: #e0e3e8;
+  --border-subtle: #f0f2f5;
+  --text-primary: #0f1419;
+  --text-secondary: #656d7a;
+  --text-muted: #8c92a0;
+  --accent-blue: #2563eb;
+  --accent-blue-glow: rgba(37, 99, 235, 0.12);
+  --accent-green: #16a34a;
+  --accent-green-glow: rgba(22, 163, 74, 0.12);
+  --accent-red: #dc2626;
+  --accent-amber: #d97706;
+  --accent-purple: #9333ea;
+}
+
 body {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; transition: background 0.2s ease; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Smooth transitions for all color changes */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
 
 /* Toggle switch */
 .toggle-switch {
@@ -67,6 +94,16 @@ body {
 .toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(20px);
   background: var(--accent-blue);
+}
+
+/* Light mode specific adjustments */
+:root.light-mode .toggle-slider:before {
+  background: var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+:root.light-mode .toggle-switch {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Pipeline node glow */

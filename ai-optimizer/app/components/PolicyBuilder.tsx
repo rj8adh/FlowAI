@@ -112,28 +112,13 @@ export default function PolicyBuilder({ modules, onToggle, onReorder }: PolicyBu
       {/* Header */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Policy Builder</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Configure Modules</h3>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Toggle modules on/off or drag to reorder within each category.
+            Drag to reorder within each phase. Toggle on/off to include in pipeline.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)]">{activeCount}/{modules.length} active</span>
-          <div className="h-4 w-px bg-[var(--border)]" />
-          {/* Mini pipeline visualiser */}
-          <div className="flex gap-0.5">
-            {modules.map((m, i) => (
-              <div
-                key={m.id}
-                title={`Step ${i + 1}: ${m.name}`}
-                className={`w-1.5 h-4 rounded-full transition-all ${
-                  m.enabled
-                    ? m.category === "Security" ? "bg-red-400" : "bg-amber-400"
-                    : "bg-[var(--border)]"
-                }`}
-              />
-            ))}
-          </div>
+          <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">{activeCount}/{modules.length} active</span>
         </div>
       </div>
 
