@@ -201,12 +201,13 @@ interface PipelineTestProps {
 }
 
 const MODULE_NAMES: Record<string, string> = {
-  "pii-scrubber": "PII Scrubber",
-  "prompt-injection": "Prompt Injection Filter",
-  "context-compressor": "Context Compressor",
-  "auto-translator": "Auto-Translator",
+  "perplexity-check": "Mathematical Perplexity Check",
+  "llm-check": "Semantic Prompt Injection Firewall",
+  "pii-scrubber": "Enterprise PII Scrubber",
+  "context-compressor": "Context Compressor (LLMLingua-2)",
+  "auto-translator": "Auto-Translator to English",
   "reverse-translator": "Reverse Translator",
-  "data-exfiltration": "Data Exfiltration Halt",
+  "data-exfiltration": "Exfiltration Halt (DLP)",
 };
 
 export default function PipelineTest({ modules }: PipelineTestProps) {
@@ -239,6 +240,26 @@ export default function PipelineTest({ modules }: PipelineTestProps) {
       if (!res.ok) throw new Error(`Pipeline API returned ${res.status}`);
       const data: PipelineResult = await res.json();
       setResult(data);
+
+      // Save to logs
+      try {
+        await fetch("/api/logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "pipeline-test",
+            status: data.blocked ? "blocked" : "passed",
+            modules: enabledModules.map(m => m.id),
+            latencyMs: data.totalLatencyMs,
+            overheadMs: Math.max(0, data.totalLatencyMs - 50),
+            tokensIn: Math.ceil(prompt.trim().split(" ").length * 1.3),
+            tokensOut: data.finalPrompt.length,
+            prompt: prompt.trim(),
+          }),
+        });
+      } catch (logError) {
+        console.warn("Failed to save log:", logError);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {

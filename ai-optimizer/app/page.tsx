@@ -9,12 +9,13 @@ import { Module } from "./components/ModuleCard";
 
 // ─── Canonical module definitions (static metadata) ──────────────────────────
 const MODULE_DEFS: Omit<Module, "enabled">[] = [
-  { id: "pii-scrubber",       name: "PII Scrubber",             description: "Uses local regex to find emails, SSNs, or API keys in the prompt and replaces them with placeholders (e.g. <EMAIL_1>) before sending.",               category: "Security", phase: "Pre",  latencyMs: 5  },
-  { id: "prompt-injection",   name: "Prompt Injection Filter",   description: "Runs the prompt against a lightweight local classifier to block known jailbreak phrases like \"Ignore all previous instructions\".",                       category: "Security", phase: "Pre",  latencyMs: 15 },
-  { id: "context-compressor", name: "Context Compressor",        description: "Strips unnecessary whitespace, line breaks, and filler words to reduce the raw token count of massive text blocks.",                                        category: "FinOps",   phase: "Pre",  latencyMs: 3  },
-  { id: "auto-translator",    name: "Auto-Translator",            description: "Detects non-English languages and translates them to English (the most token-efficient language) before sending to the LLM.",                              category: "FinOps",   phase: "Pre",  latencyMs: 50 },
-  { id: "reverse-translator", name: "Reverse Translator",         description: "If Auto-Translator was triggered, catches the English response and translates it back to the user's original native language.",                            category: "FinOps",   phase: "Post", latencyMs: 50 },
-  { id: "data-exfiltration",  name: "Data Exfiltration Halt",    description: "Scans the LLM's outgoing response for sensitive company data or unusually dense code blocks, blocking the response if it looks malicious.",               category: "Security", phase: "Post", latencyMs: 8  },
+  { id: "perplexity-check",     name: "Mathematical Perplexity Check",     description: "Calculates the mathematical entropy of the prompt to block gibberish and token-smuggling (GCG) attacks.",                                                                       category: "Security", phase: "Pre",  latencyMs: 40 },
+  { id: "llm-check",            name: "Semantic Prompt Injection Firewall", description: "Uses a localized AI firewall to analyze the prompt's intent, blocking jailbreaks, malicious commands, or 'ignore previous instructions' attacks.",                                   category: "Security", phase: "Pre",  latencyMs: 25 },
+  { id: "pii-scrubber",         name: "Enterprise PII Scrubber",           description: "Automatically redacts sensitive user data (Emails, SSNs, and API Keys) before it leaves the internal server.",                                                                  category: "Security", phase: "Pre",  latencyMs: 20 },
+  { id: "context-compressor",   name: "Context Compressor (LLMLingua-2)",  description: "Intelligently prunes redundant filler words from large prompts, reducing API token costs by up to 50% while preserving semantic meaning.",                                         category: "FinOps",   phase: "Pre",  latencyMs: 35 },
+  { id: "auto-translator",      name: "Auto-Translator to English",        description: "Detects non-English inputs and translates them into English, the most token-efficient language for AI processing.",                                                              category: "FinOps",   phase: "Pre",  latencyMs: 50 },
+  { id: "data-exfiltration",    name: "Exfiltration Halt (DLP)",           description: "Monitors the AI's final output for anomalies, blocking the response if the AI gets compromised and attempts to leak raw code, database strings, or base64 secrets.",             category: "Security", phase: "Post", latencyMs: 15 },
+  { id: "reverse-translator",   name: "Reverse Translator",                description: "Seamlessly translates the AI's English response back into the user's original language.",                                                                                       category: "FinOps",   phase: "Post", latencyMs: 50 },
 ];
 
 function buildModules(order: { id: string; enabled: boolean }[]): Module[] {
@@ -31,7 +32,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 export default function Home() {
   const [modules, setModules] = useState<Module[]>(
-    buildModules(MODULE_DEFS.map((d) => ({ id: d.id, enabled: d.id === "pii-scrubber" || d.id === "prompt-injection" })))
+    buildModules(MODULE_DEFS.map((d) => ({ id: d.id, enabled: d.category === "Security" && d.phase === "Pre" })))
   );
   const [failureMode, setFailureMode] = useState<"open" | "closed">("open");
   const [saveState, setSaveState] = useState<SaveState>("idle");

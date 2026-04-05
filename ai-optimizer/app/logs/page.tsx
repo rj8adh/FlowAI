@@ -22,8 +22,9 @@ const statusConfig = {
 };
 
 const moduleLabels: Record<string, string> = {
+  "perplexity-check": "Perplexity",
+  "llm-check": "LLM Check",
   "pii-scrubber": "PII",
-  "prompt-injection": "Injection",
   "context-compressor": "Compress",
   "auto-translator": "Translate↑",
   "reverse-translator": "Translate↓",
@@ -42,8 +43,21 @@ export default function LogsPage() {
   const [filter, setFilter] = useState<"all" | "passed" | "blocked" | "error">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch("/api/logs");
+      const data = await res.json();
+      setLogs(data.logs || []);
+    } catch (err) {
+      console.error("Failed to fetch logs:", err);
+    }
+  };
+
   useEffect(() => {
-    fetch("/api/logs").then(r => r.json()).then(d => setLogs(d.logs));
+    fetchLogs();
+    // Auto-refresh every 3 seconds
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = filter === "all" ? logs : logs.filter(l => l.status === filter);
@@ -72,6 +86,13 @@ export default function LogsPage() {
             </svg>
             <input className="bg-transparent text-xs text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] outline-none w-32" placeholder="Search by ID..." />
           </div>
+          <button onClick={fetchLogs} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[var(--text-muted)]">
+              <path d="M10 3L1 3M1 3L4 1M1 3L4 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 9L11 9M11 9L8 11M11 9L8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Refresh
+          </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all">
             Export CSV
           </button>

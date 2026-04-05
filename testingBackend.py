@@ -9,6 +9,22 @@ import re
 from langdetect import detect, LangDetectException
 from deep_translator import GoogleTranslator
 
+
+# Schemas
+class ChatRequest(BaseModel):
+    prompt: str
+
+class CompressRequest(BaseModel):
+    prompt: str
+    target_rate: float = 0.5 # Compress down to 50% of the original size by default
+
+class ReverseTranslateRequest(BaseModel):
+    text: str
+    target_language: str # e.g., 'es' for Spanish, 'ko' for Korean
+
+class ResponseCheckRequest(BaseModel):
+    text: str
+
 def clean_text(text: str) -> str:
     """
     Strips out invisible control characters and broken Unicode that crash AI tokenizers,
@@ -56,14 +72,6 @@ async def lifespan(app: FastAPI):
     torch.cuda.empty_cache()
 
 app = FastAPI(lifespan=lifespan, title="AI Security & Compression Gateway")
-
-# --- Schemas ---
-class ChatRequest(BaseModel):
-    prompt: str
-
-class CompressRequest(BaseModel):
-    prompt: str
-    target_rate: float = 0.5 # Compress down to 50% of the original size by default
 
 
 # ENDPOINT 1: Mathematical Perplexity Check
@@ -253,4 +261,63 @@ async def translate_endpoint(request: ChatRequest):
         "detected_language": result["source_language"],
         "optimized_prompt": result["final_text"],
         "processing_time_ms": round(elapsed_ms, 2)
+    }
+
+# ENDPOINT 6: Reverse Translator (Post-Processing / UX)
+def translate_to_target(text: str, target_lang: str) -> str:
+    """Takes the English AI response and translates it back to the user's native language."""
+    if target_lang == 'en':
+        return text
+        
+    # Translate from English to whatever the user originally spoke
+    translator = GoogleTranslator(source='en', target=target_lang)
+    return translator.translate(text)
+
+@app.post("/v1/post-process/translate-back")
+async def reverse_translate_endpoint(request: ReverseTranslateRequest):
+    start_time = time.perf_counter()
+    
+    # Run the translation API call in a background thread
+    translated_text = await asyncio.to_thread(
+        translate_to_target, 
+        request.text, 
+        request.target_language
+    )
+    
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
+    
+    return {
+        "status": "success",
+        "target_language": request.target_language,
+        "final_text": translated_text,
+        "processing_time_ms": round(elapsed_ms, 2)
+    }
+
+# ENDPOINT 7: Exfiltration Halt (Post-Processing Security)
+@app.post("/v1/security/exfiltration-check")
+async def exfiltration_check_endpoint(request: ResponseCheckRequest):
+    start_time = time.perf_counter()
+    
+    # We reuse your exact same calculate_perplexity function from earlier
+    # If the AI starts spitting out base64, raw code, or gibberish from a jailbreak,
+    # the perplexity will skyrocket.
+    perplexity_score = await asyncio.to_thread(calculate_perplexity, request.text)
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
+    
+    # You might need to tweak this threshold for outputs vs inputs.
+    # LLMs tend to generate very low-perplexity (highly predictable) text normally.
+    THRESHOLD = 500.0 
+    
+    if perplexity_score > THRESHOLD:
+        # Stop, collaborate, and listen. The AI has been cooked and is spitting out not so good data.
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Exfiltration Alert: High token entropy detected in AI output (Score: {perplexity_score:.2f}). Blocking response to user."
+        )
+        
+    return {
+        "status": "passed",
+        "perplexity": round(perplexity_score, 2),
+        "request_time_ms": round(elapsed_ms, 2),
+        "safe_to_send_to_user": True
     }

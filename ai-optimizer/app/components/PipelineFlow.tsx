@@ -29,7 +29,7 @@ const stages = [
       </svg>
     ),
     color: "text-[var(--accent-red)]",
-    moduleIds: ["pii-scrubber", "prompt-injection"],
+    moduleIds: ["perplexity-check", "llm-check", "pii-scrubber"],
     alwaysActive: false,
   },
   {

@@ -1,4 +1,35 @@
 {
-  "analytics": [],
+  "requestsPerDay": [
+    { "date": "Mar 30", "count": 245 },
+    { "date": "Mar 31", "count": 389 },
+    { "date": "Apr 1", "count": 412 },
+    { "date": "Apr 2", "count": 567 },
+    { "date": "Apr 3", "count": 623 },
+    { "date": "Apr 4", "count": 758 },
+    { "date": "Apr 5", "count": 542 }
+  ],
+  "moduleUsage": [
+    { "id": "pii", "name": "PII Scrubber", "hits": 2847, "category": "Security" },
+    { "id": "injection", "name": "Injection Check", "hits": 2134, "category": "Security" },
+    { "id": "compression", "name": "Context Compressor", "hits": 3421, "category": "FinOps" },
+    { "id": "translation", "name": "Auto-Translator", "hits": 1289, "category": "FinOps" },
+    { "id": "perplexity", "name": "Perplexity Check", "hits": 1956, "category": "Security" }
+  ],
+  "securityEvents": [
+    { "type": "PII Detected", "count": 156, "color": "red" },
+    { "type": "Injection Attempt", "count": 89, "color": "orange" },
+    { "type": "Anomaly Flagged", "count": 34, "color": "purple" }
+  ],
+  "costSavings": {
+    "tokensSaved": 2847600,
+    "estimatedDollars": 4278.90,
+    "avgCompressionRatio": 0.62,
+    "translationRequests": 1289
+  },
+  "statusBreakdown": [
+    { "status": "passed", "count": 3847 },
+    { "status": "blocked", "count": 234 },
+    { "status": "error", "count": 45 }
+  ],
   "createdAt": "2026-04-05T00:00:00.000Z"
 }

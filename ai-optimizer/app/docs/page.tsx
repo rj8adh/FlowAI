@@ -184,7 +184,7 @@ Content-Type: application/json`}
   "choices": [ ... ],
   "usage": { "prompt_tokens": 42, "completion_tokens": 128 },
   "x_aio": {
-    "modules_fired": ["pii-scrubber", "prompt-injection"],
+    "modules_fired": ["pii-scrubber", "perplexity-check", "llm-check"],
     "overhead_ms": 20,
     "pii_replacements": 2,
     "blocked": false
@@ -198,8 +198,8 @@ Content-Type: application/json`}
 {`{
   "error": {
     "type": "pipeline_blocked",
-    "module": "prompt-injection",
-    "message": "Request blocked by Prompt Injection Filter.",
+    "module": "llm-check",
+    "message": "Request blocked by Semantic Prompt Injection Firewall.",
     "code": 403
   }
 }`}

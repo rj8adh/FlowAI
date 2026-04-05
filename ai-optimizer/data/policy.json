@@ -1,7 +1,11 @@
 {
   "modules": [
     {
-      "id": "prompt-injection",
+      "id": "perplexity-check",
+      "enabled": true
+    },
+    {
+      "id": "llm-check",
       "enabled": true
     },
     {
@@ -17,14 +21,14 @@
       "enabled": false
     },
     {
-      "id": "reverse-translator",
+      "id": "data-exfiltration",
       "enabled": false
     },
     {
-      "id": "data-exfiltration",
+      "id": "reverse-translator",
       "enabled": false
     }
   ],
   "failureMode": "open",
-  "updatedAt": "2026-04-05T04:13:56.210Z"
+  "updatedAt": "2026-04-05T07:13:43.369Z"
 }

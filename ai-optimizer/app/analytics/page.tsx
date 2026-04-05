@@ -11,6 +11,7 @@ interface AnalyticsData {
 }
 
 function BarChart({ data }: { data: { date: string; count: number }[] }) {
+  if (!data || data.length === 0) return <div className="h-32 text-center text-[var(--text-muted)] text-xs">No data available</div>;
   const max = Math.max(...data.map(d => d.count));
   return (
     <div className="flex items-end gap-2 h-32">
@@ -58,8 +59,8 @@ export default function AnalyticsPage() {
     fetch("/api/analytics").then(r => r.json()).then(setData);
   }, []);
 
-  const totalRequests = data?.statusBreakdown.reduce((s, b) => s + b.count, 0) ?? 0;
-  const maxModuleHits = data ? Math.max(...data.moduleUsage.map(m => m.hits)) : 1;
+  const totalRequests = (data?.statusBreakdown ?? []).reduce((s, b) => s + b.count, 0);
+  const maxModuleHits = data?.moduleUsage && data.moduleUsage.length > 0 ? Math.max(...data.moduleUsage.map(m => m.hits)) : 1;
 
   return (
     <main className="bg-[var(--bg-base)] min-h-full">
@@ -81,9 +82,9 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Total Requests", value: totalRequests.toLocaleString(), sub: "Last 7 days", color: "text-blue-400", bg: "bg-blue-500/10" },
-            { label: "Cost Saved", value: `$${data?.costSavings.estimatedDollars.toFixed(2) ?? "—"}`, sub: "Via compression", color: "text-green-400", bg: "bg-green-500/10" },
-            { label: "Security Events", value: (data?.securityEvents.reduce((s, e) => s + e.count, 0) ?? 0).toLocaleString(), sub: "Blocked or flagged", color: "text-red-400", bg: "bg-red-500/10" },
-            { label: "Tokens Saved", value: data ? `${(data.costSavings.tokensSaved / 1000).toFixed(0)}k` : "—", sub: `${((data?.costSavings.avgCompressionRatio ?? 0) * 100).toFixed(0)}% avg compression`, color: "text-amber-400", bg: "bg-amber-500/10" },
+            { label: "Cost Saved", value: `$${data?.costSavings?.estimatedDollars?.toFixed(2) ?? "—"}`, sub: "Via compression", color: "text-green-400", bg: "bg-green-500/10" },
+            { label: "Security Events", value: ((data?.securityEvents ?? []).reduce((s, e) => s + e.count, 0)).toLocaleString(), sub: "Blocked or flagged", color: "text-red-400", bg: "bg-red-500/10" },
+            { label: "Tokens Saved", value: data?.costSavings?.tokensSaved ? `${(data.costSavings.tokensSaved / 1000).toFixed(0)}k` : "—", sub: `${((data?.costSavings?.avgCompressionRatio ?? 0) * 100).toFixed(0)}% avg compression`, color: "text-amber-400", bg: "bg-amber-500/10" },
           ].map(s => (
             <div key={s.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
               <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -116,7 +117,7 @@ export default function AnalyticsPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-5">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Status Breakdown</h3>
             <div className="space-y-3">
-              {data?.statusBreakdown.map(s => {
+              {(data?.statusBreakdown ?? []).map(s => {
                 const pct = totalRequests ? ((s.count / totalRequests) * 100).toFixed(1) : "0";
                 const colors: Record<string, string> = { passed: "bg-green-400", blocked: "bg-red-400", error: "bg-amber-400" };
                 return (
@@ -135,7 +136,7 @@ export default function AnalyticsPage() {
 
             {/* Donut-style legend */}
             <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] space-y-1.5">
-              {data?.statusBreakdown.map(s => {
+              {(data?.statusBreakdown ?? []).map(s => {
                 const dotColors: Record<string, string> = { passed: "bg-green-400", blocked: "bg-red-400", error: "bg-amber-400" };
                 return (
                   <div key={s.status} className="flex items-center gap-2">
@@ -155,7 +156,7 @@ export default function AnalyticsPage() {
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Module Usage</h3>
             <p className="text-[11px] text-[var(--text-muted)] mb-4">How often each module was triggered</p>
             <div className="space-y-3">
-              {data?.moduleUsage.map(m => (
+              {(data?.moduleUsage ?? []).map(m => (
                 <HorizBar key={m.id} name={m.name} hits={m.hits} max={maxModuleHits} category={m.category} />
               ))}
             </div>
@@ -165,9 +166,9 @@ export default function AnalyticsPage() {
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Security Events</h3>
             <p className="text-[11px] text-[var(--text-muted)] mb-4">Breakdown of security-related interventions</p>
             <div className="space-y-3">
-              {data?.securityEvents.map(e => {
-                const total = data.securityEvents.reduce((s, ev) => s + ev.count, 0);
-                const pct = ((e.count / total) * 100).toFixed(1);
+              {(data?.securityEvents ?? []).map(e => {
+                const total = (data?.securityEvents ?? []).reduce((s, ev) => s + ev.count, 0);
+                const pct = total > 0 ? ((e.count / total) * 100).toFixed(1) : "0";
                 const colors: Record<string, string> = { red: "bg-red-400", orange: "bg-orange-400", purple: "bg-purple-400" };
                 return (
                   <div key={e.type} className="space-y-1">
@@ -186,10 +187,10 @@ export default function AnalyticsPage() {
             <div className="mt-5 pt-4 border-t border-[var(--border-subtle)]">
               <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-3">FinOps Summary</div>
               {[
-                ["Tokens saved", `${((data?.costSavings.tokensSaved ?? 0) / 1000).toFixed(1)}k`],
-                ["Est. cost reduction", `$${data?.costSavings.estimatedDollars.toFixed(2) ?? "—"}`],
-                ["Translation requests", (data?.costSavings.translationRequests ?? 0).toLocaleString()],
-                ["Avg compression", `${((data?.costSavings.avgCompressionRatio ?? 0) * 100).toFixed(0)}%`],
+                ["Tokens saved", `${((data?.costSavings?.tokensSaved ?? 0) / 1000).toFixed(1)}k`],
+                ["Est. cost reduction", `$${data?.costSavings?.estimatedDollars?.toFixed(2) ?? "—"}`],
+                ["Translation requests", (data?.costSavings?.translationRequests ?? 0).toLocaleString()],
+                ["Avg compression", `${((data?.costSavings?.avgCompressionRatio ?? 0) * 100).toFixed(0)}%`],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between py-1">
                   <span className="text-[11px] text-[var(--text-muted)]">{k}</span>

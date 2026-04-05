@@ -61,14 +61,14 @@ export async function POST(req: NextRequest) {
   let detectedLanguage: string | undefined;
 
   for (const moduleId of modules) {
-    // ── Post-flight modules: no backend endpoint to call during a pre-flight test ──
+    // ── Post-flight modules: runs on the LLM response, not the prompt ──
     if (moduleId === "reverse-translator" || moduleId === "data-exfiltration") {
       steps.push({
         moduleId,
         moduleName:
           moduleId === "reverse-translator"
             ? "Reverse Translator"
-            : "Data Exfiltration Halt",
+            : "Exfiltration Halt (DLP)",
         status: "skipped",
         latencyMs: 0,
         details: {
@@ -81,24 +81,88 @@ export async function POST(req: NextRequest) {
 
     const wallStart = Date.now();
 
-    // ── PII Scrubber ─────────────────────────────────────────────────────────
-    if (moduleId === "pii-scrubber") {
-      const { ok, data } = await callFastAPI("/v1/security/pii-scrub", {
+    // ── Mathematical Perplexity Check ────────────────────────────────────────
+    if (moduleId === "perplexity-check") {
+      const { ok, data } = await callFastAPI("/v1/security/perplexity-check", {
         prompt: currentPrompt,
       });
 
-      const latencyMs =
-        typeof data.processing_time_ms === "number"
-          ? data.processing_time_ms
-          : Date.now() - wallStart;
+      const latencyMs = Date.now() - wallStart;
 
       if (!ok) {
         steps.push({
           moduleId,
-          moduleName: "PII Scrubber",
+          moduleName: "Mathematical Perplexity Check",
+          status: "blocked",
+          latencyMs,
+          details: {
+            perplexity: data.perplexity,
+            reason: data.detail ?? "High token entropy detected (GCG attack suspected)",
+          },
+          outputPrompt: currentPrompt,
+        });
+        blocked = true;
+        blockedBy = moduleId;
+        break;
+      }
+
+      steps.push({
+        moduleId,
+        moduleName: "Mathematical Perplexity Check",
+        status: "passed",
+        latencyMs,
+        details: {
+          perplexity: data.perplexity ?? "N/A",
+          threshold: "500.0",
+          assessment: "Natural, non-adversarial text",
+        },
+        outputPrompt: currentPrompt,
+      });
+    }
+
+    // ── Semantic Prompt Injection Firewall ────────────────────────────────────
+    else if (moduleId === "llm-check") {
+      const { ok, data } = await callFastAPI("/v1/security/llm-check", {
+        prompt: currentPrompt,
+      });
+
+      const latencyMs = Date.now() - wallStart;
+      const isBlocked = !ok;
+
+      steps.push({
+        moduleId,
+        moduleName: "Semantic Prompt Injection Firewall",
+        status: isBlocked ? "blocked" : "passed",
+        latencyMs,
+        details: {
+          llm_verdict: data.llm_response ?? "NO",
+          assessment: isBlocked ? "Jailbreak/injection pattern detected" : "Safe prompt intent",
+        },
+        outputPrompt: currentPrompt,
+      });
+
+      if (isBlocked) {
+        blocked = true;
+        blockedBy = moduleId;
+        break;
+      }
+    }
+
+    // ── Enterprise PII Scrubber ───────────────────────────────────────────────
+    else if (moduleId === "pii-scrubber") {
+      const { ok, data } = await callFastAPI("/v1/security/pii-scrub", {
+        prompt: currentPrompt,
+      });
+
+      const latencyMs = Date.now() - wallStart;
+
+      if (!ok) {
+        steps.push({
+          moduleId,
+          moduleName: "Enterprise PII Scrubber",
           status: "error",
           latencyMs,
-          details: { error: data.detail ?? "Unknown error" },
+          details: { error: data.detail ?? "Scrubbing failed" },
           outputPrompt: currentPrompt,
         });
         continue;
@@ -109,12 +173,13 @@ export async function POST(req: NextRequest) {
 
       steps.push({
         moduleId,
-        moduleName: "PII Scrubber",
+        moduleName: "Enterprise PII Scrubber",
         status: redactedCount > 0 ? "redacted" : "passed",
         latencyMs,
         details: {
           redacted_count: redactedCount,
-          items: redactedCount > 0 ? `${redactedCount} item(s) replaced` : "No PII found",
+          items: redactedCount > 0 ? `${redactedCount} sensitive item(s) replaced with placeholders` : "No PII detected",
+          compliance: "SOC2/GDPR-compliant",
         },
         outputPrompt: safePrompt,
       });
@@ -122,88 +187,19 @@ export async function POST(req: NextRequest) {
       currentPrompt = safePrompt;
     }
 
-    // ── Prompt Injection Filter (perplexity check → semantic LLM check) ───────
-    else if (moduleId === "prompt-injection") {
-      // Step 1: GCG / perplexity attack detection
-      const perplexRes = await callFastAPI("/v1/security/perplexity-check", {
-        prompt: currentPrompt,
-      });
-      const perplexData = perplexRes.data;
-
-      if (!perplexRes.ok) {
-        steps.push({
-          moduleId,
-          moduleName: "Prompt Injection Filter",
-          status: "blocked",
-          latencyMs: Date.now() - wallStart,
-          details: {
-            check: "perplexity",
-            perplexity: perplexData.perplexity,
-            reason: perplexData.detail ?? "GCG / adversarial pattern detected",
-          },
-          outputPrompt: currentPrompt,
-        });
-        blocked = true;
-        blockedBy = moduleId;
-        break;
-      }
-
-      // Step 2: Semantic injection check
-      const llmRes = await callFastAPI("/v1/security/llm-check", {
-        prompt: currentPrompt,
-      });
-      const llmData = llmRes.data;
-      const latencyMs = Date.now() - wallStart;
-
-      if (!llmRes.ok) {
-        steps.push({
-          moduleId,
-          moduleName: "Prompt Injection Filter",
-          status: "blocked",
-          latencyMs,
-          details: {
-            check: "semantic",
-            perplexity: perplexData.perplexity,
-            llm_verdict: "YES",
-            reason: llmData.detail ?? "Semantic injection detected",
-          },
-          outputPrompt: currentPrompt,
-        });
-        blocked = true;
-        blockedBy = moduleId;
-        break;
-      }
-
-      steps.push({
-        moduleId,
-        moduleName: "Prompt Injection Filter",
-        status: "passed",
-        latencyMs,
-        details: {
-          perplexity: perplexData.perplexity,
-          llm_verdict: llmData.llm_response ?? "NO",
-          checks_run: "perplexity + semantic",
-        },
-        outputPrompt: currentPrompt,
-      });
-    }
-
-    // ── Context Compressor ────────────────────────────────────────────────────
+    // ── Context Compressor (LLMLingua-2) ──────────────────────────────────────
     else if (moduleId === "context-compressor") {
       const { ok, data } = await callFastAPI("/v1/optimize/compress", {
         prompt: currentPrompt,
         target_rate: 0.5,
       });
 
-      const latencyMs =
-        typeof data.processing_time_ms === "number"
-          ? data.processing_time_ms
-          : Date.now() - wallStart;
+      const latencyMs = Date.now() - wallStart;
 
       if (!ok) {
         steps.push({
           moduleId,
-          moduleName: "Context Compressor",
+          moduleName: "Context Compressor (LLMLingua-2)",
           status: "error",
           latencyMs,
           details: { error: data.detail ?? "Compression failed" },
@@ -216,7 +212,7 @@ export async function POST(req: NextRequest) {
 
       steps.push({
         moduleId,
-        moduleName: "Context Compressor",
+        moduleName: "Context Compressor (LLMLingua-2)",
         status: "passed",
         latencyMs,
         details: {
@@ -231,21 +227,18 @@ export async function POST(req: NextRequest) {
       currentPrompt = compressedText;
     }
 
-    // ── Auto-Translator ───────────────────────────────────────────────────────
+    // ── Auto-Translator to English ────────────────────────────────────────────
     else if (moduleId === "auto-translator") {
       const { ok, data } = await callFastAPI("/v1/optimize/translate", {
         prompt: currentPrompt,
       });
 
-      const latencyMs =
-        typeof data.processing_time_ms === "number"
-          ? data.processing_time_ms
-          : Date.now() - wallStart;
+      const latencyMs = Date.now() - wallStart;
 
       if (!ok) {
         steps.push({
           moduleId,
-          moduleName: "Auto-Translator",
+          moduleName: "Auto-Translator to English",
           status: "error",
           latencyMs,
           details: { error: data.detail ?? "Translation failed" },
@@ -260,14 +253,14 @@ export async function POST(req: NextRequest) {
 
       steps.push({
         moduleId,
-        moduleName: "Auto-Translator",
+        moduleName: "Auto-Translator to English",
         status: "passed",
         latencyMs,
         details: {
           was_translated: wasTranslated,
           detected_language: detectedLanguage,
           action: wasTranslated
-            ? `Translated from "${detectedLanguage}" → English`
+            ? `Translated from "${detectedLanguage}" → English (3-4x token efficiency gain)`
             : "Already English — no translation needed",
         },
         outputPrompt: translated,

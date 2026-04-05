@@ -46,6 +46,16 @@ const navItems = [
     ),
   },
   {
+    href: "/testing",
+    label: "Testing",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 1h10v10H3z" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M6 6l2 2 4-4M8 15l-5-5h10l-5 5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/api-keys",
     label: "API Keys",
     icon: (
