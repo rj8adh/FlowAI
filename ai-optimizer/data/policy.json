@@ -1,0 +1,30 @@
+{
+  "modules": [
+    {
+      "id": "prompt-injection",
+      "enabled": true
+    },
+    {
+      "id": "pii-scrubber",
+      "enabled": true
+    },
+    {
+      "id": "context-compressor",
+      "enabled": false
+    },
+    {
+      "id": "auto-translator",
+      "enabled": false
+    },
+    {
+      "id": "reverse-translator",
+      "enabled": false
+    },
+    {
+      "id": "data-exfiltration",
+      "enabled": false
+    }
+  ],
+  "failureMode": "open",
+  "updatedAt": "2026-04-05T04:13:56.210Z"
+}
